@@ -1,0 +1,25 @@
+description: Ultralytics YOLO26s model trained on /home/ubuntu/ul37-yolo27/datasets/detected-v-t-80ab6415/data.yaml
+author: Ultralytics
+date: '2026-09-21T22:21:05.923183-07:00'
+version: 8.4.155
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+head: Detect
+batch: 1
+imgsz:
+- 1024
+- 1024
+names:
+  0: t
+  1: v
+args:
+  data: null
+  batch: 1
+  fraction: 1.0
+  quantize: null
+  nms: null
+  dynamic: false
+channels: 3
+end2end: false
