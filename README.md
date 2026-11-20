@@ -1,113 +1,121 @@
-# 🚂 VagonDetect — Railway Wagon Number, Tonnage & Volume AI Recognition
+# 🚂 RailWagon Vision AI · Industrial Railway Telemetry & OCR Engine
 
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C.svg)](https://pytorch.org)
 [![YOLOv8](https://img.shields.io/badge/Ultralytics-YOLOv8-orange.svg)](https://ultralytics.com)
 [![OpenVINO](https://img.shields.io/badge/Intel-OpenVINO-0071C5.svg)](https://openvino.ai)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.8%2B-5C3EE8.svg)](https://opencv.org)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
-Temir yo'l vagonlarini real-vaqt rejimida (RTSP IP-kameralar yoki videolardan) avtomatlashtirilgan tarzda aniqlab, har bir vagonning **8 xonali raqami**, **yuk ko'tarish quvvati (tonna)** va **kuzov hajmini (m³)** sun'iy intellekt yordamida o'quvchi va logistika hisobotini shakllantiruvchi 24/7 sanoat AI tizimi.
+An enterprise-grade, 24/7 edge computer vision system for real-time tracking, classification, and Optical Character Recognition (OCR) of railway freight cars from live RTSP CCTV feeds. Automatically identifies **8-digit wagon serial numbers**, **carrying capacity (tonnage)**, and **hull volume (m³)**.
 
 ---
 
-## 📑 Mundarija
-- [Asosiy Vazifasi](#-asosiy-vazifasi)
-- [Tizim Arxitekturasi](#-tizim-arxitekturasi)
-- [Ishlatiladigan AI Modellar](#-ishlatiladigan-ai-modellar)
-- [O'rnatish (Bitta buyruq bilan)](#-ornatish-bitta-buyruq-bilan)
-- [Ishga Tushirish](#-ishga-tushirish)
-- [24/7 Tizimli Servis (Linux Daemon)](#-247-tizimli-servis-linux-daemon)
-- [Bog'lanish](#-boglanish)
+## 📑 Table of Contents
+- [Overview & Industrial Context](#-overview--industrial-context)
+- [System Architecture](#-system-architecture)
+- [Multi-Stage Deep Learning Pipeline](#-multi-stage-deep-learning-pipeline)
+- [Installation & Setup](#-installation--setup)
+- [Execution Modes](#-execution-modes)
+- [24/7 Production Daemon (Systemd)](#-247-production-daemon-systemd)
+- [Contact](#-contact)
 
 ---
 
-## 🎯 Asosiy Vazifasi
+## 🎯 Overview & Industrial Context
 
-Temir yo'l orqali yuk tashish, logistika terminallari va yirik sanoat korxonalari (ko'mir, kimyo, metallurgiya) uchun mo'ljallangan:
-* **8 xonali raqam:** Har bir o'tayotgan vagonning davlat/tarmoq ro'yxat raqami aniqlanadi;
-* **Yuk ko'tarish (Tonna) & Hajm (m³):** Vagon korpusidagi texnik parametrlar o'qiladi;
-* **24/7 Ishlash Rejimi:** Tizim kecha-yu kunduz, noqulay ob-havo sharoitida ham avtomatlashtirilgan holda poyezdlar harakatini kutadi va yozib boradi.
+Freight rail logistics across heavy industries (coal mining, chemical manufacturing, metallurgical plants) requires non-stop monitoring of train movements, cargo capacity auditing, and automated railcar asset logging under all weather and lighting conditions.
+
+**Core Capabilities:**
+* **Automated 8-Digit Serial Recognition:** Pinpoints and deciphers official railway fleet serial plates.
+* **Tonnage & Volume Extraction:** Parses painted technical specifications (carrying capacity in tons and volume in cubic meters).
+* **24/7 Autonomous Stream Processing:** Continuous RTSP monitoring with motion-triggered detection windows and automatic session report generation upon train departure.
+* **Edge Hardware Optimization:** Powered by Intel OpenVINO runtime for accelerated FP16/INT8 inference on edge hardware.
 
 ---
 
-## 🏗 Tizim Arxitekturasi
+## 🏗 System Architecture
 
 ```mermaid
 graph TD
-    A[RTSP IP Kamera / Video Oqimi] --> B[logic_N_T_V.py Asosiy Pipeline]
-    B --> C[1. detection4.pt: Vagon raqami plastinkasini topish]
-    C --> D[2. classificationvagon.pt: 8 xonali vagon raqamini o'qish]
-    B --> E[3. detect-t-v.pt: Tonna va hajm plastinkasini topish]
-    E --> F[4. classmodel.pt: Tonna va hajm parametrlarini o'qish]
-    D --> G[Hisobot generatori & Ma'lumotlarni tekshirish]
+    A[Live RTSP CCTV Stream] --> B[Frame Ingestion & Motion Detection]
+    B --> C[Stage 1: Wagon Number Plate Localization]
+    C --> D[Stage 2: 8-Digit Serial Number OCR]
+    B --> E[Stage 3: Metric Tonnage & Volume ROI Detection]
+    E --> F[Stage 4: Tonnage & Volume Character OCR]
+    D --> G[Report Aggregator & Data Validator]
     F --> G
-    G --> H[(24/7 Logistika Hisoboti & Tasvirlar)]
+    G --> H[(Structured Output: CSV, DB, and Annotated Frames)]
 ```
 
 ---
 
-## 📦 Ishlatiladigan AI Modellar
+## 📦 Multi-Stage Deep Learning Pipeline
 
-Tizim ko'p bosqichli konveyerda 4 ta maxsus o'qitilgan modellardan foydalanadi:
-
-| Model Fayli | Vazifasi | Hajmi |
-|---|---|---|
-| `detection4.pt` | Vagon raqami yozilgan plastinkani aniqlash | ~6.2 MB |
-| `classificationvagon.pt` | Plastinkadagi 8 xonali raqamlarni o'qish (OCR) | ~6.2 MB |
-| `detect-t-v.pt` | Tonna va hajm yozilgan texnik hududni aniqlash | ~20.4 MB |
-| `classmodel.pt` | Tonna va kubometr belgilarini o'qish | ~20.3 MB |
-| `detect-t-v_openvino_model/` | Intel protsessorlari uchun OpenVINO tezlashtirilgan model | ~38 MB |
+| Pipeline Stage | Function | Model Architecture | Hardware Acceleration |
+|---|---|---|---|
+| **Wagon Plate Detector** | Localizes wagon serial plate ROI | Fine-tuned YOLOv8 Nano | CUDA / OpenVINO |
+| **Serial Number OCR** | Transcribes 8-digit serial number | Specialized Character Classifier | CUDA / OpenVINO |
+| **Technical Spec Detector** | Localizes metric tonnage (t) and volume (m³) | Fine-tuned YOLOv8 Medium | CUDA / OpenVINO |
+| **Technical Spec OCR** | Decodes payload capacity & volume numbers | Deep Character Classifier | CUDA / OpenVINO |
+| **OpenVINO Edge Model** | High-throughput edge inference | Intel OpenVINO IR (`.xml`/`.bin`) | Intel Core / Xeon / iGPU |
 
 ---
 
-## 💻 O'rnatish (Bitta buyruq bilan)
+## 💻 Installation & Setup
 
-### Linux (Ubuntu/Debian, x86_64 yoki ARM64):
+### 1. Clone the Repository:
 ```bash
-git clone https://github.com/quvonchbek212/vagon-detect-ai.git
-cd vagon-detect-ai
-chmod +x install.sh run.sh
-./install.sh
+git clone https://github.com/quvonchbek212/rail-wagon-vision-ai.git
+cd rail-wagon-vision-ai
 ```
 
-### Windows 10/11:
-1. [Python 3.9+](https://www.python.org/downloads/) o'rnating ("Add to PATH" belgilansin).
-2. `install.bat` faylini ikki marta bosing (u avtomatik virtual muhit yaratadi, kerakli paketlarni va GPU drayverlarini tekshirib o'rnatadi).
+### 2. Environment Setup:
+* **Linux (Ubuntu/Debian):**
+  ```bash
+  chmod +x install.sh run.sh
+  ./install.sh
+  ```
+* **Windows (PowerShell / CMD):**
+  Run `install.bat` (automatically configures `.venv`, verifies PyTorch GPU drivers, and installs required packages).
 
 ---
 
-## 🚀 Ishga Tushirish
-
-| Vazifa | Linux | Windows |
-|---|---|---|
-| **IP-kamera (RTSP 24/7)** | `./run.sh "rtsp://admin:parol@192.168.1.64:554/Streaming/Channels/101"` | `run.bat "rtsp://..."` |
-| **USB kamera** | `./run.sh 0` | `run.bat 0` |
-| **Video fayl (Real vaqtda)** | `./run.sh train_video.MOV` | `run.bat train_video.MOV` |
-
-### Qo'shimcha parametrlar:
-* `--oynasiz` — Grafiksiz (headless) fonda ishlash;
-* `--natijalar <papka>` — Natijalarni ko'rsatilgan papkaga yozish;
-* `--tez` — Video faylni kutmasdan eng yuqori tezlikda tahlil qilish.
-
----
-
-## ⚙️ 24/7 Tizimli Servis (Linux Systemd Daemon)
-
-Kompyuter yoqilganda dastur o'zi avtomatik ishga tushishi uchun:
+## 🚀 Execution Modes
 
 ```bash
-./install.sh --servis "rtsp://admin:parol@192.168.1.64:554/Streaming/Channels/101"
-```
+# 1. Real-time RTSP CCTV Stream (Production 24/7)
+./run.sh "rtsp://<username>:<password>@<camera_ip>:<port>/stream"
 
-* Holatni tekshirish: `systemctl status vagon-detect`
-* Jonli monitoring: `journalctl -u vagon-detect -f`
+# 2. Local USB / Web Camera
+./run.sh 0
+
+# 3. Video File Analysis
+./run.sh train_passage_sample.mp4
+
+# 4. Headless Server Mode (Disables GUI window for server environments)
+./run.sh --headless "rtsp://<username>:<password>@<camera_ip>:<port>/stream"
+```
 
 ---
 
-## 📬 Bog'lanish
+## ⚙️ 24/7 Production Daemon (Systemd)
 
-* **Muallif:** Quvonchbek Begimqulov
+To install as an autonomous background service that restarts automatically on system boot:
+
+```bash
+./install.sh --service "rtsp://<username>:<password>@<camera_ip>:<port>/stream"
+
+# Service Monitoring:
+sudo systemctl status vagon-detect
+journalctl -u vagon-detect -f
+```
+
+---
+
+## 📬 Contact
+
+* **Author:** Quvonchbek Begimqulov
 * **LinkedIn:** [linkedin.com/in/kuvonchbek-begimkulov](https://linkedin.com/in/kuvonchbek-begimkulov)
 * **Email:** [begimqulovquvonchbek53@gmail.com](mailto:begimqulovquvonchbek53@gmail.com)
 * **GitHub:** [@quvonchbek212](https://github.com/quvonchbek212)
