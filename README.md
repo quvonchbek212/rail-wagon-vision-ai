@@ -116,6 +116,6 @@ journalctl -u vagon-detect -f
 ## 📬 Contact
 
 * **Author:** Quvonchbek Begimqulov
-* **LinkedIn:** [linkedin.com/in/kuvonchbek-begimkulov](https://linkedin.com/in/kuvonchbek-begimkulov)
+* **LinkedIn:** [linkedin.com/in/quvonchbek212](https://www.linkedin.com/in/quvonchbek212/)
 * **Email:** [begimqulovquvonchbek53@gmail.com](mailto:begimqulovquvonchbek53@gmail.com)
 * **GitHub:** [@quvonchbek212](https://github.com/quvonchbek212)
